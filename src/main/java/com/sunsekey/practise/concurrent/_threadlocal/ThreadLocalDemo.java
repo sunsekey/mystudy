@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit;
  *
  *
  * 问题：
- * 可能会导致内存泄漏
+ * 可能会导致内存泄漏··
  * 分析：
  * 1）ThreadLocalMap使用ThreadLocal的<弱引用>作为key，gc时，弱引用被回收，key就会变成null
  * 这样一来，ThreadLocalMap中就会出现key为null的Entry，就没有办法访问这些key为null的Entry的value
