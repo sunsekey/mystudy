@@ -1,35 +1,57 @@
 package com.sunsekey.foo;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.HashSet;
+import java.util.Objects;
 
-public class Foo extends BaseFoo{
+public class Foo extends BaseFoo {
 
     @Override
     public void foobar() {
 
     }
 
-    private static void test(){
-        System.out.println("begin bug code ...");
-        Map<String, Integer> map = new ConcurrentHashMap<>(16);
-        System.out.println(map.size());
-        String hash1 = "AaAa";
-        String hash2 = "BBBB";
-        //hash值,相同产生死锁
-        System.out.println("hash1:"+hash1.hashCode()+",hash1:"+hash2.hashCode());
-        map.computeIfAbsent(hash1, key -> {
-            map.putIfAbsent(hash2,1);
-            return 1;
-        });
-        System.out.println(map.size());
-        System.out.println("bug code is exec here?");
-    }
-
-
     public static void main(String[] args) {
-        test();
+        HashSet<MyClass> hs = new HashSet<>();
+        MyClass myClass1 = new MyClass("abc");
+        MyClass myClass2 = new MyClass("cba");
+        hs.add(myClass1);
+        hs.add(myClass2);
+        System.out.println(hs.size());
+        System.out.println("hc2: " + myClass2.hashCode());
+        myClass2.setName("qqq");
+        System.out.println("hc2: " + myClass2.hashCode());
+        System.out.println(hs.size());
     }
+
+    private static class MyClass{
+        private String name;
+
+        public MyClass(String name){
+            this.name = name;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            MyClass myClass = (MyClass) o;
+            return name.equals(myClass.name);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(name);
+        }
+    }
+
 
 
 }

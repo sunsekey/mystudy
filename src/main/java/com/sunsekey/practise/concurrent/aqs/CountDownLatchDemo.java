@@ -34,53 +34,34 @@ import java.util.concurrent.TimeUnit;
  * 当超时在1000ns内，让线程在循环中自旋，否则阻塞线程。)
  *
  * 使用场景：
- * 1）可实现一个简单的外部服务健康检测工具。它开始时启动了n个线程类，这些线程将检查外部系统并通知闭锁(countDown)，并且启动类一直在闭锁上等待着(await())。
- * 一旦验证和检查了所有外部服务，那么启动类恢复执行，继续完成启动工作。
- * 2）//todo
+ * 1）某一线程在开始运行前等待 n 个线程执行完毕。将 CountDownLatch 的计数器初始化为 n ：new CountDownLatch(n)，每当一个任务线程执行完毕，
+ *    就将计数器减 1 countdownlatch.countDown()，当计数器的值变为 0 时，在CountDownLatch上 await() 的线程就会被唤醒。一个典型应用场景就是启动一个服务时，主线程需要等待多个组件加载完毕，之后再继续执行。
+ * 2）实现多个线程开始执行任务的最大并行性。注意是并行性，不是并发，强调的是多个线程在某一时刻同时开始执行。
+ *    类似于赛跑，将多个线程放到起点，等待发令枪响，然后同时开跑。做法是初始化一个共享的 CountDownLatch 对象，将其计数器初始化为 1 ：new CountDownLatch(1)，多个线程在开始执行任务前首先 coundownlatch.await()，当主线程调用 countDown() 时，计数器变为 0，多个线程同时被唤醒。
+ *
+ * CountDownLatch 的不足：
+ * CountDownLatch 是一次性的，计数器的值只能在构造方法中初始化一次，之后没有任何机制再次对其设置值，
+ * 当 CountDownLatch 使用完毕后，它不能再次被使用。
  *
  * 参考：https://www.jianshu.com/p/7c7a5df5bda6?ref=myread
  */
 public class CountDownLatchDemo {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
         countDownLatchDemo();
     }
 
     /**
      * 演示使用countDownLatch
      */
-    private static void countDownLatchDemo() {
-        int threadNum = 10;
-        CountDownLatch countDownLatch = new CountDownLatch(threadNum);
+    private static void countDownLatchDemo() throws InterruptedException {
+        CountDownLatch cdl = new CountDownLatch(4);
+        System.out.println("start..");
+        cdl.countDown();
+        cdl.countDown();
+        cdl.await();
+        System.out.println("all done..");
 
-        try {
-            int waitNum = 50;
-            for (int i = 0; i < waitNum; i++) {
-                new Thread(new Runnable() {
-                    @SneakyThrows
-                    @Override
-                    public void run() {
-                        System.out.println("thread " + Thread.currentThread().getName() + " await");
-                        countDownLatch.await();
-                        System.out.println("thread " + Thread.currentThread().getName() + " done");
-                    }
-                }).start();
 
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        for (int i = 0; i < threadNum; i++) {
-            new Thread(()->{
-                System.out.println("Thread " + Thread.currentThread().getName() + " starts");
-                try {
-                    TimeUnit.MILLISECONDS.sleep(100);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-                countDownLatch.countDown();
-                System.out.println("Thread " + Thread.currentThread().getName() + " finished");
-            }).start();
-        }
     }
 }

@@ -25,9 +25,13 @@ import java.util.concurrent.locks.ReentrantLock;
  * ReentrantLock的内部类Sync继承了AQS，分为公平锁FairSync和非公平锁NonfairSync
  * 公平锁：线程获取锁的顺序和调用lock的顺序一样，FIFO；（队列）
  * -获取锁，调用lock方法：
- * 1）调用AQS的acquire()。线程尝试去获得锁，如果看到state=0(没有人占用"锁")，那么再判断队列是否有排在前面的线程在等待锁(hasQueuedPredecessors())，没有的话才CAS更改state to 1
- * 1.1）如果state!=0，则看下是不是该线程重入，是的话，state + 1
- * 1.2）以上都不是，则返回false，尝试获取"锁"失败
+ * 1）调用AQS的acquire()。线程尝试去获得锁，
+ * 1.1)如果看到state=0(没有人占用"锁")，
+ *      那么再判断队列的中是否已经在等待锁且是比当前线程等得久的线程(hasQueuedPredecessors())，
+ *      没有的话则CAS更改state to 1
+ * 1.2）如果state!=0，则判断exclusiveOwnerThread（这个变量的语义是排他模式下拥有资源的线程）是否等于当前线程，是的话，state + 1
+ * 1.3）以上都不是，则返回false，尝试获取"锁"失败
+ *
  * 2）1中失败的话，则将线程包装成Node(addWaiter())，加入到队列中去（AQS内部维护一条<双向队列>）。
  * 这里逻辑比较简单，如果队列为空，则先为头节点创建一个空的Node（头节点代表获取了锁的线程，现在还没有，所以先空着）
  * 如果队列不为空，则死循环进行CAS，插入到队列里
@@ -36,8 +40,8 @@ import java.util.concurrent.locks.ReentrantLock;
  * 3.2）下一位不是头节点或者再次尝试获取锁没能成功的话，根据<前节点的状态>决定自己是否需要被阻塞(shouldParkAfterFailedAcquire())
  * （Node的<waitState>变量描述了线程的等待状态:
  * CANCELLED(1)-取消 SIGNAL(-1)-下个节点需要被唤醒 CONDITION(-2)-线程在等待条件触发 PROPAGATE(-3)-（共享锁）状态需要向后传播）
- * - 如果前节点（pn）的状态是SIGNAL，那么当前节点(cn)线程需阻塞
- * - 如果pn状态是CANCELLED，则循环将前面所有CANCELLED的节点一并移出队列，且cn线程不需要被阻塞
+ * - 如果前节点（pn）的状态是SIGNAL，那么当前节点(cn)线程需阻塞，实际是调用了LookSupport.park()进行阻塞
+ * - 如果pn状态是CANCELLED，则循环将前面所有CANCELLED的节点一并移出队列，且cn线程不需要被阻塞，继续抢锁
  * - 如果pn是其他状态，那么CAS将pn的waitState修改为SIGNAL，且cn线程不需要被阻塞
  * 3.3）如果cn（当前节点）线程需要被阻塞，则调用LockSupport.park(this)进行阻塞（类似wait()，对应unPark()）-- parkAndCheckInterrupt()
  *
@@ -57,13 +61,13 @@ import java.util.concurrent.locks.ReentrantLock;
  *
  * 非公平锁：线程获取锁的顺序和调用lock的顺序无关，全凭运气。"新来的线程不会乖乖排队"。(性能更好，因跳过了对队列的处理，ReentrantLock默认使用非公平锁)
  * -获取锁：
- * 1）直接compareAndSetState(0, 1)试图将state修改成1，如果成功，直接就获得锁；失败则继续尝试获取锁。如下：
+ * 1）调用lock后先直接CAS抢锁，如果成功，直接就获得锁；失败则继续尝试获取锁。如下：
  * if (compareAndSetState(0, 1))
  *         setExclusiveOwnerThread(Thread.currentThread());
  *     else
  *         acquire(1);
  *
- * 2）非公平锁的tryAcquire方法，只是少了调用hasQueuedPredecessors()，即不用理会队列是否有排在前面的线程在等待锁，直接就继续去获取"锁"
+ * 2）进入tryAcquire后，相比公平锁，只是少了调用hasQueuedPredecessors()，即不用理会队列是否有排在前面的线程在等待锁，直接就继续去获取"锁"
  *
  * ps:
  * 1、这里的"锁"实则是指state的修改权

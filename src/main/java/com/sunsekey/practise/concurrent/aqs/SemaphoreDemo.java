@@ -29,20 +29,19 @@ import java.util.concurrent.TimeUnit;
 public class SemaphoreDemo {
 
     public static void main(String[] args) {
-        SemaphoreDemo semaphoreDemo = new SemaphoreDemo();
-        semaphoreDemo.semaphoreTest();
+        semaphoreTest();
     }
 
-    private void semaphoreTest() {
-        Semaphore semaphore = new Semaphore(3);
+    private static void semaphoreTest() {
+        Semaphore semaphore = new Semaphore(20);
         ExecutorService executor = Executors.newCachedThreadPool();
         Runnable task = ()->{
             try {
 //                semaphore.acquire(3);
-                semaphore.acquire();
+                semaphore.acquire(3);
                 System.out.println("Thread " + Thread.currentThread().getName() + " acquired the resource and start working..");
                 TimeUnit.MILLISECONDS.sleep(1000);
-                semaphore.release();
+                semaphore.release(3);
 //                semaphore.release(3);
                 System.out.println("Thread " + Thread.currentThread().getName() + " finishing working and released the resource..");
             } catch (InterruptedException e) {

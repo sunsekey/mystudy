@@ -2,6 +2,10 @@ package com.sunsekey.practise.concurrent._threadlocal;
 
 import lombok.Data;
 
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -21,7 +25,7 @@ import java.util.concurrent.TimeUnit;
  * 可能会导致内存泄漏··
  * 分析：
  * 1）ThreadLocalMap使用ThreadLocal的<弱引用>作为key，gc时，弱引用被回收，key就会变成null
- * 这样一来，ThreadLocalMap中就会出现key为null的Entry，就没有办法访问这些key为null的Entry的value
+ * 这样一来，若thread迟迟不结束，ThreadLocalMap中就会出现key为null的Entry，就没有办法访问这些key为null的Entry的value
  * 存在一条强引用链：Thread Ref -> Thread -> ThreaLocalMap -> Entry -> value永远无法回收，造成内存泄漏
  * jdk的解决办法：
  * 在get\set\remove时都会去清除key为null的entry，但如果分配了threadLocal却一直不使用，就会导致内存泄漏
@@ -43,6 +47,20 @@ import java.util.concurrent.TimeUnit;
 public class ThreadLocalDemo {
 
     public static void main(String[] args) throws InterruptedException {
+//        Map<String,Integer> map = new HashMap<>();
+//        map.put("abc",1);
+//        map.put("efg",2);
+//        map.put("efg",4);
+//        map.put(null,0);
+//        map.put(null,3);
+//        Set<String> set = new HashSet<>();
+//        set.add("ab");
+//        set.add("ab");
+//        System.out.println(map);
+//        System.out.println(set);
+//        if(true){
+//            return;
+//        }
         ThreadLocal<MyClassForThreadLocal> myThreadLocal = new ThreadLocal<>();
         // 复写initialValue方法，则不先set也可以get，否则会报空指针
         ThreadLocal<Integer> myIntLocal = ThreadLocal.withInitial(() -> 0);
